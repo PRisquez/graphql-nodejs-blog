@@ -20,6 +20,27 @@ const register = {
     },
 };
 
+const login = {
+    type: GraphQLString,
+    description: "Login as user and return a token",
+    args: {
+        email: { type: GraphQLString },
+        password: { type:GraphQLString },
+    },
+    async resolve(_, args){
+        const { email, password } = args;
+
+        const user = await User.findOne({email}).select('+password');
+
+        if (!user || user.password !== password) throw new Error("Invalid credentials");
+
+        const token = createJWTToken(user);
+
+        return token;
+    }
+}
+
 module.exports = {
-    register
+    register,
+    login
 }
