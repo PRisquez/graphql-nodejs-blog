@@ -1,5 +1,6 @@
-const { GraphQLString } = require('graphql');
-const { User } = require('../models');
+const { GraphQLString, GraphQLID } = require('graphql');
+const { User, Post } = require('../models');
+const { UserType, PostType } = require("./types");
 const { createJWTToken } = require('../util/auth')
 
 const register = {
@@ -40,7 +41,62 @@ const login = {
     }
 }
 
+const createPost = {
+    type: PostType,
+    description: "Create a new post",
+    args: {
+        title: { type: GraphQLString },
+        body: { type: GraphQLString }
+    },
+    async resolve(_, args, { user }) {
+        const { title, body } = args;
+        const newPost = new Post({
+            title,
+            body,
+            authorId: user._id
+        });
+
+        await newPost.save()
+        return newPost;
+    }
+};
+
+const updatePost = {
+    type: PostType,
+    description: 'Update a post',
+    args: {
+        id: { type: GraphQLID },
+        title: { type:GraphQLString },
+        body: { type:GraphQLString },
+    },
+    async resolve(_,{ id, title, body}, { user }){
+        if(!user) throw new Error("Unauthorized");
+
+        await Post.findOneAndUpdate({_id: id, authorId: user._id},{title, body},{new: true, runValidators: true});
+    }
+};
+
+const deletePost = {
+    type: GraphQLString,
+    description: "Delete a post",
+    args: {
+        id: { type: GraphQLString },
+    },
+    async resolve(_,{id},{user}){
+        if(!user) throw new Error("Unauthorized");
+
+        const postDeleted = await Post.findOneAndDelete({_id: id, authorId: user._id});
+
+        if (!postDeleted) throw new Error("Post not found");
+
+        return "Post deleted";
+    }
+}
+
 module.exports = {
     register,
-    login
+    login,
+    createPost,
+    updatePost,
+    deletePost
 }
